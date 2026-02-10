@@ -72,19 +72,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
   const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await fileToBase64(file);
-      setFormData(prev => ({ ...prev, mainImage: base64 }));
+      try {
+        const base64 = await fileToBase64(file);
+        setFormData(prev => ({ ...prev, mainImage: base64 }));
+      } catch (err) {
+        console.error("Image processing failed", err);
+      }
     }
   };
 
   const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // Fixed: Explicitly typed 'file' as File to resolve 'unknown' type error on line 83.
-      const base64s = await Promise.all(Array.from(files).map((file: File) => fileToBase64(file)));
-      setFormData(prev => ({ ...prev, gallery: [...prev.gallery, ...base64s] }));
+      try {
+        const base64s = await Promise.all(Array.from(files).map((file: File) => fileToBase64(file)));
+        setFormData(prev => ({ ...prev, gallery: [...prev.gallery, ...base64s] }));
+      } catch (err) {
+        console.error("Gallery processing failed", err);
+      }
     }
-    // Reset input so the same file can be selected again if removed
     if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
@@ -98,36 +104,51 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
       alert("Main image is required.");
       return;
     }
+
     setIsProcessing(true);
 
-    const prompts = {
-      lighting: `${formData.lightingShadows} ${formData.atmosphere ? `| Mood: ${formData.atmosphere}` : ''}`,
-      composition: formData.spaceStructure || 'Architectural shot',
-      materials: `${formData.colorPalette} ${formData.keywords ? `| Keywords: ${formData.keywords}` : ''}`,
-      camera: initialData?.prompts.camera || 'Professional Setup, 8k resolution',
-      negative: initialData?.prompts.negative || 'blur, noise, messy, distorted, low quality'
-    };
+    try {
+      const prompts = {
+        lighting: `${formData.lightingShadows} ${formData.atmosphere ? `| Mood: ${formData.atmosphere}` : ''}`,
+        composition: formData.spaceStructure || 'Architectural shot',
+        materials: `${formData.colorPalette} ${formData.keywords ? `| Keywords: ${formData.keywords}` : ''}`,
+        camera: initialData?.prompts.camera || 'Professional Setup, 8k resolution',
+        negative: initialData?.prompts.negative || 'blur, noise, messy, distorted, low quality'
+      };
 
-    let generatedSpots: Hotspot[] = initialData?.hotspots || [];
-    
-    if (!initialData || (initialData.title !== formData.title)) {
-      generatedSpots = await generateHotspots(formData.title, formData.description, prompts);
+      let generatedSpots: Hotspot[] = initialData?.hotspots || [];
+      
+      // AI 호출은 별도의 try-catch로 감싸서 실패해도 저장은 되도록 함
+      if (!initialData || (initialData.title !== formData.title)) {
+        try {
+          const spots = await generateHotspots(formData.title, formData.description, prompts);
+          if (spots && spots.length > 0) {
+            generatedSpots = spots;
+          }
+        } catch (aiError) {
+          console.warn("AI hotspot generation failed, using empty hotspots.", aiError);
+        }
+      }
+
+      const newCase: InteriorCase = {
+        id: initialData?.id || `custom-${Date.now()}`,
+        title: formData.title || 'Untitled Space',
+        subtitle: formData.subtitle || 'Custom Entry',
+        description: formData.description || 'No description provided.',
+        mainImage: formData.mainImage,
+        gallery: formData.gallery.length > 0 ? formData.gallery : [formData.mainImage],
+        hotspots: generatedSpots,
+        prompts: prompts
+      };
+
+      onUpload(newCase);
+      onClose();
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert("Failed to commit to archive. The data might be too large or there was a system error.");
+    } finally {
+      setIsProcessing(false);
     }
-
-    const newCase: InteriorCase = {
-      id: initialData?.id || `custom-${Date.now()}`,
-      title: formData.title || 'Untitled Space',
-      subtitle: formData.subtitle || 'Custom Entry',
-      description: formData.description || 'No description provided.',
-      mainImage: formData.mainImage,
-      gallery: formData.gallery.length > 0 ? formData.gallery : [formData.mainImage],
-      hotspots: generatedSpots,
-      prompts: prompts
-    };
-
-    onUpload(newCase);
-    setIsProcessing(false);
-    onClose();
   };
 
   return (
@@ -155,7 +176,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
           <div className="space-y-4">
             <label className="text-[10px] uppercase tracking-widest text-neutral-600 font-bold">MAIN IMAGE UPLOAD</label>
             <div 
-              onClick={() => mainImageInputRef.current?.click()}
+              onClick={() => !isProcessing && mainImageInputRef.current?.click()}
               className="group relative aspect-video bg-black border-2 border-dashed border-neutral-800 hover:border-neutral-500 transition-all cursor-pointer overflow-hidden flex items-center justify-center rounded-sm"
             >
               {formData.mainImage ? (
@@ -185,7 +206,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
               <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-400">RELATED FRAMES (GALLERY)</h3>
               <button 
                 type="button"
-                onClick={() => galleryInputRef.current?.click()}
+                onClick={() => !isProcessing && galleryInputRef.current?.click()}
                 className="text-[9px] uppercase tracking-widest px-4 py-2 border border-neutral-700 hover:border-white transition-colors text-neutral-400 hover:text-white font-bold"
               >
                 + Upload Frames
@@ -212,11 +233,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
                   </button>
                 </div>
               ))}
-              {formData.gallery.length === 0 && (
-                <div className="col-span-full py-8 border border-neutral-800 border-dashed text-center">
-                  <p className="text-[10px] text-neutral-600 italic uppercase tracking-widest">No additional frames uploaded</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -237,9 +253,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
               <InputGroup label="COLOR PALETTE" value={formData.colorPalette} onChange={v => setFormData({...formData, colorPalette: v})} placeholder="Materials and tones..." />
               <InputGroup label="LIGHTING / SHADOWS" value={formData.lightingShadows} onChange={v => setFormData({...formData, lightingShadows: v})} placeholder="Light quality..." />
               <InputGroup label="ATMOSPHERE" value={formData.atmosphere} onChange={v => setFormData({...formData, atmosphere: v})} placeholder="Emotional mood..." />
-              <div className="md:col-span-2">
-                <InputGroup label="ADDITIONAL KEYWORDS" value={formData.keywords} onChange={v => setFormData({...formData, keywords: v})} placeholder="Specific detail descriptors..." />
-              </div>
             </div>
           </div>
 
@@ -251,7 +264,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, in
             {isProcessing ? (
               <span className="flex items-center justify-center gap-4">
                 <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                Synthesizing Interactive Elements...
+                Processing Archive...
               </span>
             ) : (
               initialData ? 'Update Archive Entry' : 'Commit to Archive'
