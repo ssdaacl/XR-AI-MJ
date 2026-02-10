@@ -12,22 +12,24 @@
             font-family: 'Inter', sans-serif;
             background-color: #050505;
             color: #F5F5F7;
+            overflow-x: hidden;
+            margin: 0;
         }
         .serif {
             font-family: 'Playfair Display', serif;
         }
         /* Custom scrollbar */
         ::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         ::-webkit-scrollbar-track {
             background: #050505;
         }
         ::-webkit-scrollbar-thumb {
-            background: #333;
+            background: #222;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: #444;
         }
 
         /* Reveal animations */
@@ -60,21 +62,47 @@
         .delay-400 { transition-delay: 400ms; animation-delay: 400ms; }
         .delay-500 { transition-delay: 500ms; animation-delay: 500ms; }
         .delay-700 { transition-delay: 700ms; animation-delay: 700ms; }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Loading fallback */
+        #root:empty::before {
+            content: "ARCHIVE INITIALIZING";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            letter-spacing: 0.5em;
+            color: #333;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
     "react": "https://esm.sh/react@^19.2.4",
     "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <!-- Vite가 이 파일을 빌드 시점에 자동으로 변환하고 묶어줍니다 -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
