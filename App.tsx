@@ -6,7 +6,7 @@ import Navbar from './components/Navbar';
 import ProjectDetail from './components/ProjectDetail';
 import UploadModal from './components/UploadModal';
 
-const STORAGE_KEY = 'lumiere_archive_v1';
+const STORAGE_KEY = 'lumiere_archive_v2'; // 버전을 올려 충돌 방지
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>(ViewMode.ARCHIVE);
@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [isNavbarVisible, setIsNavbarVisible] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<InteriorCase | null>(null);
+  const [showSystemInfo, setShowSystemInfo] = useState(false);
   const archiveRef = useRef<HTMLDivElement>(null);
   const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
   
@@ -30,8 +31,17 @@ const App: React.FC = () => {
     return CASES;
   });
 
+  // LocalStorage 저장 시 에러 핸들링
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allCases));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allCases));
+    } catch (e) {
+      if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+        alert("Archive storage is full. Please use smaller images or remove some entries.");
+      } else {
+        console.error("Storage sync failed", e);
+      }
+    }
   }, [allCases]);
 
   useEffect(() => {
@@ -107,7 +117,45 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#050505] selection:bg-white selection:text-black">
+      <div className="fixed top-10 right-10 z-[60] flex items-center gap-3">
+        <button 
+          onClick={() => setShowSystemInfo(!showSystemInfo)}
+          className="glass px-3 py-1.5 flex items-center gap-2 group hover:bg-white/10 transition-all rounded-full"
+        >
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+          <span className="text-[9px] uppercase tracking-[0.3em] font-bold text-neutral-400 group-hover:text-white transition-colors">
+            Sys: Active
+          </span>
+        </button>
+      </div>
+
+      {showSystemInfo && (
+        <div className="fixed top-24 right-10 z-[60] w-64 glass p-6 rounded-sm animate-in fade-in slide-in-from-top-2 duration-500">
+          <h4 className="text-[10px] uppercase tracking-widest font-bold text-white mb-4">Archive Protocol</h4>
+          <div className="space-y-3 text-[9px] text-neutral-500 uppercase tracking-widest leading-relaxed">
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span>Environment</span>
+              <span className="text-neutral-300">GH Pages</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span>AI Engine</span>
+              <span className="text-neutral-300">Gemini 3 Flash</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Status</span>
+              <span className="text-emerald-500">Synchronized</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowSystemInfo(false)}
+            className="w-full mt-6 py-2 bg-white/5 hover:bg-white/10 text-[9px] uppercase tracking-widest text-white transition-colors border border-white/10"
+          >
+            Close Diagnostics
+          </button>
+        </div>
+      )}
+
       <Navbar 
         onHome={handleHome} 
         onUploadClick={() => {
@@ -129,7 +177,6 @@ const App: React.FC = () => {
 
       {view === ViewMode.ARCHIVE ? (
         <div className="w-full">
-          {/* 시작 페이지 (Start Page) - 흑백 이미지 유지 */}
           <section className="relative h-screen w-full flex items-center overflow-hidden">
             <div className="absolute inset-0 z-0">
               <img 
@@ -174,7 +221,6 @@ const App: React.FC = () => {
             </button>
           </section>
 
-          {/* 메인 페이지 (Main Archive Page) - 컬러 이미지 */}
           <main ref={archiveRef} className="pt-24 px-8 max-w-7xl mx-auto scroll-mt-20">
             <header className="mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8">
               <div className="max-w-2xl">
@@ -191,14 +237,6 @@ const App: React.FC = () => {
                 >
                   An archival study of high-end architectural interiors and the AI prompt engineering required to manifest them.
                 </p>
-              </div>
-              <div 
-                data-reveal-id="header-side"
-                className={`flex flex-col items-end gap-4 reveal-hidden delay-400 ${visibleElements.has('header-side') ? 'reveal-visible' : ''}`}
-              >
-                 <div className="text-[10px] uppercase tracking-[0.4em] font-bold text-neutral-600 border-l border-neutral-800 pl-8 h-fit pb-2">
-                  Permanent Collection
-                </div>
               </div>
             </header>
 
