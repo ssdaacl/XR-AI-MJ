@@ -13,9 +13,25 @@ interface ProjectDetailProps {
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onEdit, onDelete }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   return (
     <div className="pt-32 pb-24 px-8 max-w-7xl mx-auto animate-in fade-in duration-700 relative">
+      {/* Lightbox / Fullscreen Viewer */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/98 flex items-center justify-center p-4 md:p-12 cursor-zoom-out animate-in fade-in duration-300"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <button className="absolute top-10 right-10 text-white/50 hover:text-white text-2xl">✕</button>
+          <img 
+            src={fullscreenImage} 
+            alt="Fullscreen View" 
+            className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500"
+          />
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-12">
         <button 
           onClick={onBack}
@@ -76,7 +92,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onEdit, 
         </div>
         
         <div className="lg:col-span-8">
-          <InteractiveImage src={project.mainImage} hotspots={project.hotspots} />
+          <div className="cursor-zoom-in" onClick={() => setFullscreenImage(project.mainImage)}>
+            <InteractiveImage src={project.mainImage} hotspots={project.hotspots} />
+          </div>
           <div className="mt-4 flex justify-between items-center text-[10px] uppercase tracking-[0.3em] text-neutral-600 font-bold">
             <span>Main Frame 01</span>
             <span>Interactive Elements: {project.hotspots.length}</span>
@@ -86,14 +104,20 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onEdit, 
 
       <div className="mb-32">
         <h2 className="serif text-3xl font-light mb-12 text-center opacity-50">Related Frames</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* 원본 비율 유지를 위해 columns 레이아웃 사용 (Masonry 스타일) */}
+        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
           {project.gallery.map((img, idx) => (
-            <div key={idx} className="group overflow-hidden rounded-sm bg-neutral-900 aspect-[4/3]">
+            <div 
+              key={idx} 
+              className="group overflow-hidden rounded-sm bg-neutral-900 break-inside-avoid cursor-zoom-in relative transition-all duration-700 hover:ring-1 hover:ring-white/20"
+              onClick={() => setFullscreenImage(img)}
+            >
               <img 
                 src={img} 
                 alt={`Frame ${idx}`} 
-                className="w-full h-full object-cover transition-all duration-700 cursor-crosshair scale-100 group-hover:scale-110"
+                className="w-full h-auto object-cover transition-all duration-1000 scale-100 group-hover:scale-105 brightness-90 group-hover:brightness-110"
               />
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             </div>
           ))}
         </div>
