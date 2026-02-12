@@ -27,6 +27,7 @@ const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, hotspots }) =>
             style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
             onMouseEnter={() => setActiveHotspot(spot)}
             onMouseLeave={() => setActiveHotspot(null)}
+            onClick={(e) => e.stopPropagation()} // 핫스팟 클릭 시 라이트박스 열림 방지
           >
             {/* The Dot */}
             <div className="relative">
@@ -36,7 +37,7 @@ const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, hotspots }) =>
 
             {/* Tooltip */}
             {activeHotspot?.id === spot.id && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 p-4 bg-white/95 backdrop-blur-md text-neutral-900 rounded-md shadow-2xl z-20 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 p-4 bg-white/95 backdrop-blur-md text-neutral-900 rounded-md shadow-2xl z-20 animate-in fade-in slide-in-from-bottom-2 duration-300 pointer-events-none">
                 <h4 className="font-bold text-xs uppercase tracking-wider mb-1">{spot.label}</h4>
                 <p className="text-[11px] leading-relaxed opacity-80">{spot.description}</p>
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white/95" />
